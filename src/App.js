@@ -5,9 +5,10 @@ import React, { useState, useEffect } from 'react';
 
 import { Configuration, OpenAIApi } from 'openai'
 
+// import * as _vscode from "vscode";
 import './App.css';
 
-// import { tsvscode } from './globals.d';
+var tsvscode;
 
 const Bot = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#fff" className="bi bi-robot" viewBox="0 0 16 16">
@@ -33,21 +34,23 @@ export default function App() {
 
     const chatContainer = document.querySelector('#chat_container');
 
-    const configuration = new Configuration({
-        apiKey: "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",
-        // apiKey: "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", 
-        // apiKey: process.env.OPENAI_API_KEY,
-    });
-    const openai = new OpenAIApi(configuration);
-
-    // variables
+    // REACT VARIABLES
     const [text, setText] = useState("");
     const [loader, setLoader] = useState(false);
     const [messageList, setMessageList] = useState([]);
     const [loadingText, setLoadingText] = useState("");
 
+    const [accessToken, setAccessToken] = useState("");
+    const [fetchCall, setFetchCall] = useState(true);
 
-    // helper functions
+    // OPEN AI CONFIG
+    const configuration = new Configuration({
+        apiKey: accessToken,
+        // apiKey: process.env.OPENAI_API_KEY,
+    });
+    const openai = new OpenAIApi(configuration);
+
+    // HELPER FUNCTIONS
     const ChatStripe = ({ isAI, uniqueId, value }) => {
         return (
             <div className={`wrapper ${isAI ? 'ai' : null}`}>
@@ -86,11 +89,10 @@ export default function App() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
         if (loader) return;
 
+        // set userInput
         const userText = String(text);
-
         const userMessage = {
             isAI: false,
             uniqueId: crypto.randomUUID(),
@@ -100,6 +102,7 @@ export default function App() {
 
         setText("");
 
+        // set botInput
         const botID = crypto.randomUUID();
         const botMessage = {
             isAI: true,
@@ -120,18 +123,33 @@ export default function App() {
             })
         }, 300);
 
+        // API CALL
         fetchChatGPTResponse(userText)
             .then((response) => {
-                if (response.status === 200) {
-                    setMessageList((list) => {
-                        const newList = list.map(obj => {
-                            if (obj.uniqueId === botID) {
-                                obj = { ...obj, value: response.data.choices[0].text.trim() }
-                            }
-                            return obj;
+                if (fetchCall) {
+                    if (response.choices) {
+                        setMessageList((list) => {
+                            const newList = list.map(obj => {
+                                if (obj.uniqueId === botID) {
+                                    obj = { ...obj, value: response.choices[0].text.trim() }
+                                }
+                                return obj;
+                            })
+                            return newList;
                         })
-                        return newList;
-                    })
+                    }
+                } else {
+                    if (response.status === 200) {
+                        setMessageList((list) => {
+                            const newList = list.map(obj => {
+                                if (obj.uniqueId === botID) {
+                                    obj = { ...obj, value: response.data.choices[0].text.trim() }
+                                }
+                                return obj;
+                            })
+                            return newList;
+                        })
+                    }
                 }
             })
             .catch((err) => {
@@ -146,17 +164,48 @@ export default function App() {
     }
 
     const fetchChatGPTResponse = (prompt) => {
-        return openai.createCompletion({
+
+        const body = {
             model: "text-davinci-003",
             prompt: `${prompt}`,
             temperature: 0, // Higher values means the model will take more risks.
             max_tokens: 3000, // The maximum number of tokens to generate in the completion. Most models have a context length of 2048 tokens (except for the newest models, which support 4096).
             top_p: 1, // alternative to sampling with temperature, called nucleus sampling
             frequency_penalty: 0.5, // Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.
-            presence_penalty: 0, // Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.
-        });
+            presence_penalty: 0,
+        };
+
+        if (fetchCall) {
+            return fetch("https://api.openai.com/v1/completions", {
+                headers: {
+                    "Authorization": 'Bearer ' + accessToken,
+                    "Content-Type": "application/json",
+                },
+                method: 'POST',
+                body: JSON.stringify(body),
+            }).then(response => response.json());
+        } else {
+            return openai.createCompletion(body);
+        }
     }
 
+
+    const saveToken = () => {
+        dispactCommand("saveToken", accessToken);
+    }
+
+    const deleteToken = () => {
+        dispactCommand("deleteToken", null);
+    }
+
+    const dispactCommand = (command, value) => {
+        if (tsvscode) {
+            tsvscode.postMessage({ command, value });
+        }
+        if (window.tsvscode) {
+            window.tsvscode.postMessage({ command, value });
+        }
+    }
 
     useEffect(() => {
         if (chatContainer) {
@@ -168,48 +217,73 @@ export default function App() {
         }
     }, [messageList])
 
-    // useEffect(() => {
-    //     try {
-    //         console.log("tsvscode=>", tsvscode);
-    //         tsvscode.postMessage({
-    //             type: "onInfo",
-    //             value: "Check it out!!",
-    //         });
-    //     } catch (err) {
-    //         console.log(err)
-    //     }
-    // }, [])
+    useEffect(() => {
+        console.log("tsvscode from app.js =>", tsvscode);
+        console.log("window.tsvscode from app.js =>", window.tsvscode);
+
+        dispactCommand("requestToken", null);
+
+        window.addEventListener("message", (event) => {
+            console.log("webview listener=>", event);
+            switch (event.type) {
+                case "setToken": {
+                    console.log("setToken value=>", event.value);
+                    setAccessToken(event.value);
+                    break;
+                }
+                default:
+                    break;
+            }
+        })
+    }, [])
 
 
     return (
         <>
-            <div id="app">
-                <div id="chat_container">
-                    {
-                        messageList.map((obj, index) => {
+            {
+                accessToken && (
+                    <>
+                        <div id="app">
+                            <div id="chat_container">
+                                {
+                                    messageList.map((obj, index) => {
 
-                            if (index === messageList.length - 1 && obj.isAI && loader) {
-                                return (<BotReplyLoading key={index}></BotReplyLoading>)
-                            }
-                            return (<ChatStripe {...obj} key={index}></ChatStripe>)
-                        })
-                    }
-                </div>
+                                        if (index === messageList.length - 1 && obj.isAI && loader) {
+                                            return (<BotReplyLoading key={index}></BotReplyLoading>)
+                                        }
+                                        return (<ChatStripe {...obj} key={index}></ChatStripe>)
+                                    })
+                                }
+                            </div>
 
-                <form onSubmit={handleSubmit}>
-                    <div className='row'>
-                        <div className='double-column'>
-                            <textarea style={{ resize: "none" }} value={text} onChange={e => setText(e.target.value)} onKeyDown={handleKeyDown} name="prompt" rows="1" cols="1" placeholder="Ask codex..."></textarea>
+                            <form onSubmit={handleSubmit}>
+                                <div className='row'>
+                                    <div className='double-column'>
+                                        <textarea style={{ resize: "none" }} value={text} onChange={e => setText(e.target.value)} onKeyDown={handleKeyDown} name="prompt" rows="1" cols="1" placeholder="Ask codex..."></textarea>
+                                    </div>
+                                    <div className='column'>
+                                        <button type="submit">
+                                            <Send />
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
                         </div>
-                        <div className='column'>
-                            <button type="submit">
-                                <Send />
-                            </button>
+                    </>
+                )
+            }
+
+            {
+                !accessToken && (
+                    <>
+                        <div id="app">
+
                         </div>
-                    </div>
-                </form>
-            </div>
+                    </>
+                )
+            }
         </>
+
     );
 
 }
