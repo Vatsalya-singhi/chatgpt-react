@@ -2,10 +2,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
-
 import { Configuration, OpenAIApi } from 'openai'
-
-// import * as _vscode from "vscode";
 import './App.css';
 
 var tsvscode;
@@ -29,10 +26,22 @@ const Send = () => (
     </svg>
 )
 
+const Save = () => (
+    <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M13.353 1.146l1.5 1.5L15 3v11.5l-.5.5h-13l-.5-.5v-13l.5-.5H13l.353.146zM2 2v12h12V3.208L12.793 2H11v4H4V2H2zm6 0v3h2V2H8z" />
+    </svg>
+)
+
+const Close = () => (
+    <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M8 8.707l3.646 3.647.708-.707L8.707 8l3.647-3.646-.707-.708L8 7.293 4.354 3.646l-.707.708L7.293 8l-3.646 3.646.707.708L8 8.707z" />
+    </svg>
+)
 
 export default function App() {
 
     const chatContainer = document.querySelector('#chat_container');
+    const apiKeyInput = document.querySelector('#apiKeyInput');
 
     // REACT VARIABLES
     const [text, setText] = useState("");
@@ -42,6 +51,14 @@ export default function App() {
 
     const [accessToken, setAccessToken] = useState("");
     const [fetchCall, setFetchCall] = useState(true);
+
+
+    const [editFlag, setEditFlag] = useState(false);
+    // const [model, setModel] = useState("text-davinci-003");
+    // const [modelList, setModelList] = useState(["text-davinci-003"]);
+    // const handleModelChange = (e) => {
+    //     setModel(e.target.value);
+    // }
 
     // OPEN AI CONFIG
     const configuration = new Configuration({
@@ -91,6 +108,11 @@ export default function App() {
         e.preventDefault();
         if (loader) return;
 
+        if (!accessToken) {
+            dispactCommand("Error", "Invalid API Key!");
+            return;
+        }
+
         // set userInput
         const userText = String(text);
         const userMessage = {
@@ -125,8 +147,15 @@ export default function App() {
 
         // API CALL
         fetchChatGPTResponse(userText)
+            .then(response => response.json())
             .then((response) => {
                 if (fetchCall) {
+
+                    // console.log("response=>", response);
+                    if (response.error) {
+                        throw new Error(response?.error?.message ?? "Error occured!");
+                    }
+
                     if (response.choices) {
                         setMessageList((list) => {
                             const newList = list.map(obj => {
@@ -149,11 +178,14 @@ export default function App() {
                             })
                             return newList;
                         })
+                    } else {
+                        throw new Error(response?.error?.message ?? "Error occured!");
                     }
                 }
             })
             .catch((err) => {
-                console.log(err);
+                // console.log("err=>", err);
+                dispactCommand("Error", err);
             })
             .finally(() => {
                 setLoader(false);
@@ -183,7 +215,8 @@ export default function App() {
                 },
                 method: 'POST',
                 body: JSON.stringify(body),
-            }).then(response => response.json());
+            });
+            // .then(response => response.json());
         } else {
             return openai.createCompletion(body);
         }
@@ -211,23 +244,21 @@ export default function App() {
         if (chatContainer) {
             setTimeout(() => {
                 chatContainer.scrollTop = chatContainer.scrollHeight;
-                // chatContainer.scrollTo(0, chatContainer.scrollHeight);
-                // chatContainer.scrollTo({ bottom: 0, behavior: 'smooth' });
             });
         }
     }, [messageList])
 
     useEffect(() => {
-        console.log("tsvscode from app.js =>", tsvscode);
-        console.log("window.tsvscode from app.js =>", window.tsvscode);
+        // console.log("tsvscode from app.js =>", tsvscode);
+        // console.log("window.tsvscode from app.js =>", window.tsvscode);
 
         dispactCommand("requestToken", null);
 
         window.addEventListener("message", (event) => {
-            console.log("webview listener=>", event);
+            // console.log("webview listener=>", event);
             switch (event.type) {
                 case "setToken": {
-                    console.log("setToken value=>", event.value);
+                    // console.log("setToken value=>", event.value);
                     setAccessToken(event.value);
                     break;
                 }
@@ -240,51 +271,96 @@ export default function App() {
 
     return (
         <>
-            {
-                accessToken && (
-                    <>
-                        <div id="app">
-                            <div id="chat_container">
-                                {
-                                    messageList.map((obj, index) => {
+            <div id="app">
 
-                                        if (index === messageList.length - 1 && obj.isAI && loader) {
-                                            return (<BotReplyLoading key={index}></BotReplyLoading>)
-                                        }
-                                        return (<ChatStripe {...obj} key={index}></ChatStripe>)
-                                    })
-                                }
-                            </div>
+                <div className="header">
+                    <div className="w-60">
+                        <h2 className='header-text'>VSChatGPT</h2>
+                    </div>
 
-                            <form onSubmit={handleSubmit}>
-                                <div className='row'>
-                                    <div className='double-column'>
-                                        <textarea style={{ resize: "none" }} value={text} onChange={e => setText(e.target.value)} onKeyDown={handleKeyDown} name="prompt" rows="1" cols="1" placeholder="Ask codex..."></textarea>
-                                    </div>
-                                    <div className='column'>
-                                        <button type="submit">
-                                            <Send />
-                                        </button>
-                                    </div>
-                                </div>
-                            </form>
+                    <div className="w-40 params">
+
+                        {/* API KEY CONTROL */}
+                        <div className='header-row'>
+                            <input
+                                value={accessToken}
+                                id="apiKeyInput"
+                                onChange={(e) => setAccessToken(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.keyCode === 13) {
+                                        saveToken();
+                                        setEditFlag(false);
+                                    }
+                                }}
+                                placeholder="Enter your API Key"
+                                disabled={!editFlag} />
+
+                            {/* SAVE API KEY BUTTON */}
+                            {editFlag && (<button
+                                onClick={() => {
+                                    saveToken();
+                                    setEditFlag(false);
+                                }}>
+                                <Send />
+                            </button>)}
+
+                            {/* DELETE API KEY BUTTON */}
+                            {!editFlag && (<button
+                                onClick={() => {
+                                    deleteToken();
+                                    setEditFlag(true);
+                                    apiKeyInput.focus();
+                                }}>
+                                <Close />
+                            </button>)}
                         </div>
-                    </>
-                )
-            }
 
-            {
-                !accessToken && (
-                    <>
-                        <div id="app">
+                        {/* SELECT MODEL CONTROL */}
+                        {/* <div>
+                            <select className='select-model' disabled={!accessToken || editFlag || modelList.length === 0}
+                                placeholder='Select Model'
+                                value={model}
+                                onChange={handleModelChange}>
+                                {modelList.map((obj) => (
+                                    <option value={obj}>{obj}</option>
+                                ))}
+                            </select>
+                        </div> */}
 
+
+                    </div>
+                </div>
+
+                <div id="chat_container">
+                    {
+                        messageList.map((obj, index) => {
+
+                            if (index === messageList.length - 1 && obj.isAI && loader) {
+                                return (<BotReplyLoading key={index}></BotReplyLoading>)
+                            }
+                            return (<ChatStripe {...obj} key={index}></ChatStripe>)
+                        })
+                    }
+                </div>
+
+                <form onSubmit={handleSubmit}>
+                    <div className='row'>
+                        <div className='double-column'>
+                            <textarea style={{ resize: "none" }} value={text} onChange={e => setText(e.target.value)} onKeyDown={handleKeyDown} name="prompt" rows="1" cols="1" placeholder="Ask codex..."></textarea>
                         </div>
-                    </>
-                )
-            }
+                        <div className='column'>
+                            <button type="submit">
+                                <Send />
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+            </div>
         </>
-
     );
 
 }
 
+// add header with option to insert api keys and dropdowns to select different api params;
+// submit only if api key exists else show error
