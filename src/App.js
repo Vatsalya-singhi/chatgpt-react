@@ -151,7 +151,6 @@ export default function App() {
             .then((response) => {
                 if (fetchCall) {
 
-                    console.log("response=>", response);
                     if (response.error) {
                         throw new Error(response?.error?.message ?? "Error occured!");
                     }
@@ -184,7 +183,6 @@ export default function App() {
                 }
             })
             .catch((err) => {
-                console.log("err in catch =>", err);
                 dispactCommand("Error", err);
             })
             .finally(() => {
@@ -253,9 +251,11 @@ export default function App() {
         dispactCommand("requestToken", null);
 
         window.addEventListener("message", (event) => {
-            switch (event.type) {
+            const obj = event.data ?? {};
+            switch (obj.type) {
                 case "setToken": {
-                    setAccessToken(event.value);
+                    const value = !!obj.value ? obj.value : "";
+                    setAccessToken(value);
                     break;
                 }
                 default:
