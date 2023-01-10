@@ -217,6 +217,7 @@ form button {
   align-items: center;
   justify-content: space-around;
   margin-right: 20px;
+  width: 350px;
 }
 
 .delete-token {

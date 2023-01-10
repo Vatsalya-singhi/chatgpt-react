@@ -1,7 +1,7 @@
 /* eslint-disable no-undef */
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Configuration, OpenAIApi } from 'openai'
 import './App.css';
 
@@ -41,7 +41,7 @@ const Close = () => (
 export default function App() {
 
     const chatContainer = document.querySelector('#chat_container');
-    const apiKeyInput = document.querySelector('#apiKeyInput');
+    const apiKeyInput = useRef(null)
 
     // REACT VARIABLES
     const [text, setText] = useState("");
@@ -151,7 +151,7 @@ export default function App() {
             .then((response) => {
                 if (fetchCall) {
 
-                    // console.log("response=>", response);
+                    console.log("response=>", response);
                     if (response.error) {
                         throw new Error(response?.error?.message ?? "Error occured!");
                     }
@@ -184,7 +184,7 @@ export default function App() {
                 }
             })
             .catch((err) => {
-                // console.log("err=>", err);
+                console.log("err in catch =>", err);
                 dispactCommand("Error", err);
             })
             .finally(() => {
@@ -249,16 +249,12 @@ export default function App() {
     }, [messageList])
 
     useEffect(() => {
-        // console.log("tsvscode from app.js =>", tsvscode);
-        // console.log("window.tsvscode from app.js =>", window.tsvscode);
 
         dispactCommand("requestToken", null);
 
         window.addEventListener("message", (event) => {
-            // console.log("webview listener=>", event);
             switch (event.type) {
                 case "setToken": {
-                    // console.log("setToken value=>", event.value);
                     setAccessToken(event.value);
                     break;
                 }
@@ -284,7 +280,7 @@ export default function App() {
                         <div className='header-row'>
                             <input
                                 value={accessToken}
-                                id="apiKeyInput"
+                                ref={apiKeyInput}
                                 onChange={(e) => setAccessToken(e.target.value)}
                                 onKeyDown={(e) => {
                                     if (e.keyCode === 13) {
@@ -309,7 +305,8 @@ export default function App() {
                                 onClick={() => {
                                     deleteToken();
                                     setEditFlag(true);
-                                    apiKeyInput.focus();
+                                    setAccessToken("");
+                                    apiKeyInput.current.focus();
                                 }}>
                                 <Close />
                             </button>)}
