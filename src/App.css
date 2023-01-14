@@ -184,40 +184,32 @@ form button {
   align-items: center;
   justify-content: space-between;
   padding-block: 15px !important;
+  width: 100%;
 }
 
 .header-text {
   font-size: 18px !important;
 }
 
-/* .w-75 {
-  width: 75%;
-}
-.w-25 {
-  width: 25%;
-} */
-/* .w-60 {
+.w-60 {
   width: 60%;
 }
 .w-40 {
   width: 40%;
-} */
-/* .w-50 {
-  width: 50%;
-} */
+}
 
 .params {
   display: flex;
   align-items: center;
-  justify-content: space-around;
+  justify-content: space-between;
 }
 
 .header-row {
   display: flex;
   align-items: center;
-  justify-content: space-around;
+  justify-content: space-between;
   margin-right: 20px;
-  width: 350px;
+  width: 100%;
 }
 
 .delete-token {
@@ -227,4 +219,46 @@ form button {
 
 .select-model {
   width: 150px !important;
+}
+
+.btn-rounded {
+  border-radius: 25%;
+}
+
+.btn-primary {
+  color: #fff !important;
+  background-color: #337ab7;
+  border-color: #2e6da4;
+}
+
+.btn-success {
+  color: #fff !important;
+  background-color: #5cb85c;
+  border-color: #4cae4c;
+}
+
+.btn-danger {
+  color: #fff !important;
+  background-color: #d9534f;
+  border-color: #d43f3a;
+}
+
+.btn-info {
+  color: #fff !important;
+  background-color: #5bc0de;
+  border-color: #46b8da;
+}
+
+.mr-10 {
+  margin-right: 10px;
+}
+
+.api-input {
+  border: 1px solid black;
+  color: #fff;
+  padding: 10px;
+  border-radius: 5px;
+  border: none;
+  outline: none;
+  max-width: 400px;
 }
